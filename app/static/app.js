@@ -318,6 +318,7 @@ function renderVoiceRefs(name, refs) {
     li.innerHTML = `
       <div class="voice-ref-head">
         <strong class="ref-filename"></strong>
+        <span class="badge ai-badge" style="display:none">🤖 AI 임시 생성</span>
         <audio controls></audio>
         <button class="danger small remove-ref-btn">삭제</button>
       </div>
@@ -329,6 +330,9 @@ function renderVoiceRefs(name, refs) {
     `;
     li.querySelector('.ref-filename').textContent = filename;
     li.querySelector('audio').src = audioUrl;
+    if (ref.source === 'ai_placeholder') {
+      li.querySelector('.ai-badge').style.display = 'inline-block';
+    }
 
     const promptInput = li.querySelector('.prompt-text-input');
     promptInput.value = ref.prompt_text || '';
@@ -492,6 +496,34 @@ document.getElementById('add-ref-form').addEventListener('submit', async (e) => 
   }
   fileInput.value = '';
   await refreshVoiceRefs(currentCharacter);
+});
+
+document.getElementById('generate-ref-btn').addEventListener('click', async (e) => {
+  if (!currentCharacter) return;
+  const btn = e.currentTarget;
+
+  const proceed = confirm(
+    'Windows에 내장된 한국어 음성(현재는 여성 음성만 지원)으로 페르소나 성격을 어느 정도 반영한 ' +
+    '임시 목소리를 만듭니다.\n\n실제 목소리가 아니라 시작점일 뿐이니, 나중에 진짜 음성 샘플로 ' +
+    '교체하는 걸 추천합니다.\n\n계속할까요?'
+  );
+  if (!proceed) return;
+
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = '생성 중입니다...';
+  try {
+    await apiJson(`/api/characters/${encodeURIComponent(currentCharacter)}/voice_refs/generate`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    await refreshVoiceRefs(currentCharacter);
+  } catch (err) {
+    alert(`임시 목소리 생성 실패: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 });
 
 // ---- 대사 작업실 탭 ----

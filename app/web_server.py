@@ -15,6 +15,7 @@ from engine_manager import EngineManager
 import monitor as monitor_module
 from paths import bundled_resource, project_root
 from tts_client import TTSClient, TTSError
+from voice_generator import VoiceGenerationError, generate_placeholder_voice
 
 PROJECT_ROOT = project_root()
 ENGINE_DIR = PROJECT_ROOT / "engine" / "gpt-sovits" / "v2pro"
@@ -138,6 +139,36 @@ async def api_add_voice_ref(name: str, file: UploadFile = File(...), prompt_text
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     finally:
         tmp_path.unlink(missing_ok=True)
+    return ref
+
+
+@app.post("/api/characters/{name}/voice_refs/generate")
+def api_generate_voice_ref(name: str):
+    try:
+        data = store.load_character(name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    persona_text = " ".join(
+        part for part in (data.get("persona"), data.get("appearance"), data.get("speech_style")) if part
+    ).strip()
+    if not persona_text:
+        raise HTTPException(status_code=400, detail="페르소나·외형·말투 중 하나는 먼저 입력하고 저장해주세요.")
+
+    tmp_dir = DATA_DIR / "_uploads"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    tmp_wav = tmp_dir / f"{uuid.uuid4().hex}.wav"
+    try:
+        seed_text = generate_placeholder_voice(persona_text, tmp_wav)
+    except VoiceGenerationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    try:
+        ref = store.add_voice_ref(name, str(tmp_wav), prompt_text=seed_text, lang="ko", source="ai_placeholder")
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        tmp_wav.unlink(missing_ok=True)
     return ref
 
 

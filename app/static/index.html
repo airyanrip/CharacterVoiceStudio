@@ -66,9 +66,9 @@
                   <textarea id="char-appearance" rows="4"></textarea>
                   <label>말투</label>
                   <textarea id="char-speech-style" rows="4"></textarea>
-                  <button id="save-character-btn">💾 캐릭터 정보 저장</button>
-                  <span id="save-character-status" class="dim"></span>
                 </div>
+                <button id="save-character-btn">💾 캐릭터 정보 저장</button>
+                <span id="save-character-status" class="dim"></span>
               </div>
               <div class="col card">
                 <label>목소리 레퍼런스 (3~10초 짧은 wav + 정확한 대본)</label>
@@ -77,6 +77,9 @@
                   <input type="file" id="ref-file" accept="audio/wav,.wav" required>
                   <button type="submit">레퍼런스 추가</button>
                 </form>
+                <button type="button" id="generate-ref-btn" class="small secondary" style="margin-top:8px">
+                  🤖 목소리 샘플이 없다면 — 페르소나로 임시 목소리 만들기
+                </button>
               </div>
             </div>
           </section>

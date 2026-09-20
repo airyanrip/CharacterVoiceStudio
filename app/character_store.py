@@ -92,7 +92,9 @@ class CharacterStore:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
     # ---- 목소리 레퍼런스 ----
-    def add_voice_ref(self, name: str, src_wav_path: str, prompt_text: str = "", lang: str = "ko") -> dict:
+    def add_voice_ref(
+        self, name: str, src_wav_path: str, prompt_text: str = "", lang: str = "ko", source: str = "user"
+    ) -> dict:
         data = self.load_character(name)
         voice_dir = self.character_dir(name) / "voice_refs"
         voice_dir.mkdir(parents=True, exist_ok=True)
@@ -105,7 +107,8 @@ class CharacterStore:
         dest = voice_dir / dest_name
         shutil.copy2(src, dest)
 
-        ref = {"wav": f"voice_refs/{dest_name}", "prompt_text": prompt_text, "lang": lang}
+        # source: "user"(직접 업로드) 또는 "ai_placeholder"(페르소나만으로 임시 생성) 구분용.
+        ref = {"wav": f"voice_refs/{dest_name}", "prompt_text": prompt_text, "lang": lang, "source": source}
         data.setdefault("voice_refs", []).append(ref)
         self.save_character(name, data)
         return ref
