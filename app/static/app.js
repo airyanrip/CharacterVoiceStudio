@@ -183,7 +183,7 @@ const characterListEl = document.getElementById('character-list');
 const emptyState = document.getElementById('empty-state');
 const characterPanel = document.getElementById('character-panel');
 
-const AVATAR_COLORS = ['#7289ff', '#4cc38a', '#e8c24a', '#ef5a67', '#c77dff', '#4ac0e0', '#f0955e'];
+const AVATAR_COLORS = ['#e64c93', '#8f6fd6', '#c060d6', '#ff7ab0', '#7d5bb5', '#4ac0e0', '#f0955e'];
 function colorForName(name) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
