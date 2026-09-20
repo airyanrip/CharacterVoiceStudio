@@ -1,0 +1,23 @@
+# GPT-SoVITS 엔진 (siro_ai에서 복사한 13GB+ 런타임/모델, git으로 관리할 대상이 아님)
+/engine/
+
+# 사용자가 만든 캐릭터 데이터 (페르소나, 음성 레퍼런스 wav, 생성된 대사) — 개인 데이터라 제외
+/characters/
+
+# 런타임에 생성되는 데이터(업로드 임시 파일 등)
+/data/
+
+# 파이썬 가상환경
+/.venv/
+__pycache__/
+*.pyc
+
+# PyInstaller 빌드 산출물
+/app/build/
+/app/dist/
+*.spec
+/CharacterVoiceStudio.exe
+
+# OS/에디터 잡동사니
+.DS_Store
+Thumbs.db
