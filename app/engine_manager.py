@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import threading
 import time
@@ -51,9 +52,19 @@ class EngineManager:
                 self._log.append(self._failed_message)
                 return
 
+            # 엔진의 공식 실행 스크립트(api.bat)는 PYTHONUTF8/PYTHONIOENCODING을 강제로
+            # utf-8로 맞춘 뒤에 실행한다. 이걸 빠뜨리면 한국어 Windows에서는 자식 프로세스가
+            # 콘솔 기본 코드페이지(cp949)로 stdout을 쓰게 되고, 우리는 그걸 utf-8로 잘못
+            # 해석해서 작업 로그의 한글이 깨져 보이게 된다.
+            child_env = os.environ.copy()
+            child_env["PYTHONUTF8"] = "1"
+            child_env["PYTHONIOENCODING"] = "utf-8"
+            child_env["PYTHONLEGACYWINDOWSSTDIO"] = "utf-8"
+
             self._process = subprocess.Popen(
                 [str(python_exe), str(api_script), "-p", str(self.port), "-a", self.host],
                 cwd=str(self.engine_dir),
+                env=child_env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
