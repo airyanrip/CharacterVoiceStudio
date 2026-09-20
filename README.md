@@ -128,3 +128,5 @@ CharacterVoiceStudio/
 - 이 저장소의 코드에는 별도 라이선스가 명시되어 있지 않습니다.
 - 실제 음성 합성 엔진은 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)(MIT 라이선스)를 그대로
   사용하며, GPT-SoVITS 자체와 그 사전학습 모델의 라이선스·이용 조건은 해당 프로젝트를 따릅니다.
+- 화면에 쓰이는 도트(픽셀) 폰트는 한글을 지원하는 [Galmuri](https://github.com/quiple/galmuri)이며,
+  SIL Open Font License 1.1로 배포됩니다(`app/static/fonts/LICENSE.txt` 참고).

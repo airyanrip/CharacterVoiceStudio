@@ -1,3 +1,30 @@
+/* Galmuri — 한글을 지원하는 무료 도트(픽셀) 폰트, SIL OFL 1.1 라이선스.
+   https://github.com/quiple/galmuri */
+@font-face {
+  font-family: "Galmuri11";
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/Galmuri11.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Galmuri11";
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/Galmuri11-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Galmuri14";
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/Galmuri14.woff2") format("woff2");
+}
+@font-face {
+  font-family: "GalmuriMono11";
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/GalmuriMono11.woff2") format("woff2");
+}
+
 :root {
   --bg: #140f1c;
   --panel: #1d1628;
@@ -22,7 +49,7 @@
 html, body { margin: 0; height: 100%; }
 
 body {
-  font-family: "Segoe UI", -apple-system, "Malgun Gothic", sans-serif;
+  font-family: "Galmuri11", "Segoe UI", -apple-system, "Malgun Gothic", sans-serif;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -143,6 +170,7 @@ button.secondary:hover { background: var(--border); color: var(--text); filter: 
 }
 .brand-icon { font-size: 18px; filter: drop-shadow(0 0 6px rgba(230, 76, 147, 0.5)); }
 .brand-name {
+  font-family: "Galmuri14", "Galmuri11", sans-serif;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.2px;
@@ -321,7 +349,7 @@ h3 {
   padding: 10px 14px;
   height: 56vh;
   overflow-y: auto;
-  font-family: Consolas, "Courier New", monospace;
+  font-family: "GalmuriMono11", Consolas, "Courier New", monospace;
   font-size: 13px;
   line-height: 1.55;
 }
