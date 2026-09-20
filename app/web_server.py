@@ -1,6 +1,9 @@
 """로컬 PC 한 대에서만 쓰는 캐릭터 생성·목소리 등록·대사 합성 웹앱(FastAPI)."""
 from __future__ import annotations
 
+import uuid
+from pathlib import Path
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -123,7 +126,10 @@ def api_delete_character(name: str):
 async def api_add_voice_ref(name: str, file: UploadFile = File(...), prompt_text: str = Form("")):
     tmp_dir = DATA_DIR / "_uploads"
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    tmp_path = tmp_dir / (file.filename or "reference.wav")
+    # 업로드 원본 파일명을 그대로 쓰면 동시 업로드 충돌이나 경로 조작 위험이 있으므로,
+    # 확장자만 원본에서 가져오고 파일명 자체는 항상 새로 만든다.
+    suffix = Path(file.filename or "").suffix or ".wav"
+    tmp_path = tmp_dir / f"{uuid.uuid4().hex}{suffix}"
     content = await file.read()
     tmp_path.write_bytes(content)
     try:
@@ -137,13 +143,19 @@ async def api_add_voice_ref(name: str, file: UploadFile = File(...), prompt_text
 
 @app.delete("/api/characters/{name}/voice_refs")
 def api_remove_voice_ref(name: str, wav: str):
-    store.remove_voice_ref(name, wav)
+    try:
+        store.remove_voice_ref(name, wav)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"ok": True}
 
 
 @app.get("/api/characters/{name}/voice_refs/audio")
 def api_get_voice_ref_audio(name: str, wav: str):
-    path = store.voice_ref_abs_path(name, wav)
+    try:
+        path = store.voice_ref_abs_path(name, wav)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not path.exists():
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
     return FileResponse(path, media_type="audio/wav")
@@ -169,7 +181,10 @@ class TranscribePayload(BaseModel):
 
 @app.post("/api/characters/{name}/voice_refs/transcribe")
 def api_transcribe(name: str, payload: TranscribePayload):
-    wav_path = store.voice_ref_abs_path(name, payload.wav)
+    try:
+        wav_path = store.voice_ref_abs_path(name, payload.wav)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     try:
         text = asr_client.transcribe(str(wav_path))
     except ASRError as exc:
@@ -189,7 +204,10 @@ def api_synthesize(name: str, payload: SynthesizePayload):
     if not text:
         raise HTTPException(status_code=400, detail="대사를 입력하세요.")
 
-    data = store.load_character(name)
+    try:
+        data = store.load_character(name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     refs = data.get("voice_refs", [])
     if not refs:
         raise HTTPException(status_code=400, detail="등록된 목소리 레퍼런스가 없습니다.")
@@ -231,7 +249,10 @@ def api_list_dialogues(name: str):
 
 @app.get("/api/characters/{name}/dialogues/{wav_filename}")
 def api_get_dialogue_audio(name: str, wav_filename: str):
-    path = store.dialogue_wav_path(name, wav_filename)
+    try:
+        path = store.dialogue_wav_path(name, wav_filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not path.exists():
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
     return FileResponse(path, media_type="audio/wav")

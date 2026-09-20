@@ -7,9 +7,13 @@
 <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
-  <div id="engine-banner" class="engine-banner loading">엔진 상태 확인 중...</div>
+  <div id="engine-banner" class="engine-banner loading"><span class="engine-banner-dot"></span><span id="engine-banner-text">엔진 상태 확인 중...</span></div>
   <div class="layout">
     <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon">🎙️</span>
+        <span class="brand-name">CharacterVoiceStudio</span>
+      </div>
       <div class="sidebar-header">
         <h2>캐릭터</h2>
       </div>
@@ -21,13 +25,16 @@
     </aside>
     <main class="main">
       <div class="tabs top-tabs">
-        <button class="tab-btn active" data-toptab="character">캐릭터 작업</button>
-        <button class="tab-btn" data-toptab="monitor">서버 상태</button>
-        <button class="tab-btn" data-toptab="log">작업 로그</button>
+        <button class="tab-btn active" data-toptab="character"><span class="tab-icon">🎭</span>캐릭터 작업</button>
+        <button class="tab-btn" data-toptab="monitor"><span class="tab-icon">📊</span>서버 상태</button>
+        <button class="tab-btn" data-toptab="log"><span class="tab-icon">📜</span>작업 로그</button>
       </div>
 
       <section id="toptab-character" class="toptab-panel active">
-        <div id="empty-state" class="empty-state">왼쪽에서 캐릭터를 선택하거나 새로 만드세요.</div>
+        <div id="empty-state" class="empty-state">
+          <div class="empty-state-icon">🎭</div>
+          <div>왼쪽에서 캐릭터를 선택하거나 새로 만드세요.</div>
+        </div>
         <div id="character-panel" class="character-panel" style="display:none">
           <div class="tabs">
             <button class="tab-btn active" data-tab="settings">캐릭터 설정</button>
@@ -36,11 +43,11 @@
 
           <section id="tab-settings" class="tab-panel active">
             <div class="two-col">
-              <div class="col">
+              <div class="col card">
                 <label>이름</label>
                 <input id="char-name" type="text" readonly>
 
-                <button type="button" id="bulk-input-toggle-btn" class="small secondary">페르소나·외형·말투 한 번에 입력하기</button>
+                <button type="button" id="bulk-input-toggle-btn" class="small secondary">✏️ 페르소나·외형·말투 한 번에 입력하기</button>
                 <div id="bulk-input-panel" class="bulk-input-panel" style="display:none">
                   <label>아래처럼 줄 앞에 이름을 붙여서 한 번에 붙여넣으세요</label>
                   <textarea id="bulk-input-text" rows="8" placeholder="페르소나: 씩씩하고 장난기 많은 성격.
@@ -48,20 +55,22 @@
 말투: 문장 끝에 ~다냥을 붙임."></textarea>
                   <div class="btn-row">
                     <button type="button" id="bulk-input-apply-btn" class="small">나눠서 채우기</button>
-                    <button type="button" id="bulk-input-cancel-btn" class="small">닫기</button>
+                    <button type="button" id="bulk-input-cancel-btn" class="small secondary">닫기</button>
                   </div>
                 </div>
 
-                <label>페르소나(성격)</label>
-                <textarea id="char-persona" rows="4"></textarea>
-                <label>외형</label>
-                <textarea id="char-appearance" rows="4"></textarea>
-                <label>말투</label>
-                <textarea id="char-speech-style" rows="4"></textarea>
-                <button id="save-character-btn">캐릭터 정보 저장</button>
-                <span id="save-character-status" class="dim"></span>
+                <div id="individual-fields-block">
+                  <label>페르소나(성격)</label>
+                  <textarea id="char-persona" rows="4"></textarea>
+                  <label>외형</label>
+                  <textarea id="char-appearance" rows="4"></textarea>
+                  <label>말투</label>
+                  <textarea id="char-speech-style" rows="4"></textarea>
+                  <button id="save-character-btn">💾 캐릭터 정보 저장</button>
+                  <span id="save-character-status" class="dim"></span>
+                </div>
               </div>
-              <div class="col">
+              <div class="col card">
                 <label>목소리 레퍼런스 (3~10초 짧은 wav + 정확한 대본)</label>
                 <ul id="voice-ref-list" class="voice-ref-list"></ul>
                 <form id="add-ref-form" class="add-ref-form">
@@ -73,14 +82,16 @@
           </section>
 
           <section id="tab-studio" class="tab-panel">
-            <label>대사</label>
-            <textarea id="dialogue-text" rows="4" placeholder="합성할 대사를 입력하세요."></textarea>
-            <div class="btn-row">
-              <button id="synth-btn">합성</button>
-              <button id="save-dialogue-btn" disabled>저장</button>
+            <div class="card">
+              <label>대사</label>
+              <textarea id="dialogue-text" rows="4" placeholder="합성할 대사를 입력하세요."></textarea>
+              <div class="btn-row">
+                <button id="synth-btn">🔊 합성</button>
+                <button id="save-dialogue-btn" disabled>💾 저장</button>
+              </div>
+              <div id="synth-status" class="dim"></div>
+              <audio id="synth-player" controls style="display:none"></audio>
             </div>
-            <div id="synth-status" class="dim"></div>
-            <audio id="synth-player" controls style="display:none"></audio>
 
             <h3>저장된 대사</h3>
             <ul id="dialogue-list" class="dialogue-list"></ul>
@@ -94,10 +105,10 @@
 
       <section id="toptab-log" class="toptab-panel">
         <div class="log-toolbar">
-          <input type="text" id="log-filter" placeholder="로그 안에서 검색...">
+          <input type="text" id="log-filter" placeholder="🔍 로그 안에서 검색...">
           <label class="log-toggle"><input type="checkbox" id="log-autoscroll" checked> 자동 스크롤</label>
-          <button id="log-clear-btn" class="small">화면 지우기</button>
-          <button id="log-copy-btn" class="small">전체 복사</button>
+          <button id="log-clear-btn" class="small secondary">화면 지우기</button>
+          <button id="log-copy-btn" class="small secondary">전체 복사</button>
         </div>
         <p class="dim">음성 엔진(GPT-SoVITS) 콘솔의 실제 출력입니다. 오류로 보이는 줄은 빨간색, 경고는 노란색으로 표시됩니다.</p>
         <div id="engine-log-view" class="engine-log-view"></div>

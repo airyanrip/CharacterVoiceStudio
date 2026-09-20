@@ -3,14 +3,28 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
 
+_UNSAFE_NAME_CHARS = re.compile(r'[\\/:*?"<>|]')
+
 
 def _now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _validate_character_name(name: str) -> None:
+    if not name:
+        raise ValueError("캐릭터 이름을 입력하세요.")
+    if _UNSAFE_NAME_CHARS.search(name):
+        raise ValueError('캐릭터 이름에는 \\ / : * ? " < > | 문자를 쓸 수 없습니다.')
+    if name in (".", "..") or name.startswith("."):
+        raise ValueError("캐릭터 이름을 그렇게 지을 수 없습니다.")
+    if len(name) > 50:
+        raise ValueError("캐릭터 이름은 50자 이하로 지어주세요.")
 
 
 class CharacterStore:
@@ -36,8 +50,7 @@ class CharacterStore:
     # ---- 캐릭터 생성/로드/저장/삭제 ----
     def create_character(self, name: str, persona: str = "", appearance: str = "", speech_style: str = "") -> dict:
         name = name.strip()
-        if not name:
-            raise ValueError("캐릭터 이름을 입력하세요.")
+        _validate_character_name(name)
         char_dir = self.character_dir(name)
         if char_dir.exists():
             raise ValueError(f"이미 '{name}' 캐릭터가 존재합니다.")
@@ -98,16 +111,23 @@ class CharacterStore:
         return ref
 
     def remove_voice_ref(self, name: str, wav_rel_path: str) -> None:
+        wav_path = self._resolve_within_character(name, wav_rel_path)
         data = self.load_character(name)
         refs = data.get("voice_refs", [])
         data["voice_refs"] = [r for r in refs if r["wav"] != wav_rel_path]
         self.save_character(name, data)
-        wav_path = self.character_dir(name) / wav_rel_path
         if wav_path.exists():
             wav_path.unlink()
 
+    def _resolve_within_character(self, name: str, rel_path: str) -> Path:
+        base = self.character_dir(name).resolve()
+        resolved = (base / rel_path).resolve()
+        if not resolved.is_relative_to(base):
+            raise ValueError("잘못된 파일 경로입니다.")
+        return resolved
+
     def voice_ref_abs_path(self, name: str, wav_rel_path: str) -> Path:
-        return (self.character_dir(name) / wav_rel_path).resolve()
+        return self._resolve_within_character(name, wav_rel_path)
 
     def update_voice_ref_prompt(self, name: str, wav_rel_path: str, prompt_text: str) -> None:
         data = self.load_character(name)
@@ -153,4 +173,4 @@ class CharacterStore:
         return row
 
     def dialogue_wav_path(self, name: str, wav_filename: str) -> Path:
-        return self.character_dir(name) / "dialogues" / wav_filename
+        return self._resolve_within_character(name, f"dialogues/{wav_filename}")

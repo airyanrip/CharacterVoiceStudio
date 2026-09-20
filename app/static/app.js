@@ -41,18 +41,19 @@ document.querySelectorAll('.tabs:not(.top-tabs) .tab-btn').forEach((btn) => {
 
 // ---- 엔진 상태 배너 ----
 const engineBanner = document.getElementById('engine-banner');
+const engineBannerText = document.getElementById('engine-banner-text');
 
 async function pollEngineStatus() {
   try {
     const status = await apiJson('/api/engine/status');
     if (status.failed_message) {
-      engineBanner.textContent = `엔진 오류: ${status.failed_message}`;
+      engineBannerText.textContent = `엔진 오류: ${status.failed_message}`;
       engineBanner.className = 'engine-banner error';
     } else if (!status.ready) {
-      engineBanner.textContent = '엔진을 기동하는 중입니다. 첫 기동은 모델 로딩으로 다소 시간이 걸립니다...';
+      engineBannerText.textContent = '엔진을 기동하는 중입니다. 첫 기동은 모델 로딩으로 다소 시간이 걸립니다...';
       engineBanner.className = 'engine-banner loading';
     } else {
-      engineBanner.textContent = '엔진 준비 완료';
+      engineBannerText.textContent = '엔진 준비 완료';
       engineBanner.className = 'engine-banner ready';
     }
 
@@ -182,13 +183,32 @@ const characterListEl = document.getElementById('character-list');
 const emptyState = document.getElementById('empty-state');
 const characterPanel = document.getElementById('character-panel');
 
+const AVATAR_COLORS = ['#7289ff', '#4cc38a', '#e8c24a', '#ef5a67', '#c77dff', '#4ac0e0', '#f0955e'];
+function colorForName(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
 async function reloadCharacterList(selectName) {
   const names = await apiJson('/api/characters');
   characterListEl.innerHTML = '';
   names.forEach((name) => {
     const li = document.createElement('li');
-    li.textContent = name;
+    li.dataset.name = name;
     li.className = name === currentCharacter ? 'selected' : '';
+
+    const avatar = document.createElement('span');
+    avatar.className = 'char-avatar';
+    avatar.style.background = colorForName(name);
+    avatar.textContent = name.trim().charAt(0).toUpperCase();
+
+    const label = document.createElement('span');
+    label.className = 'char-name-label';
+    label.textContent = name;
+
+    li.appendChild(avatar);
+    li.appendChild(label);
     li.addEventListener('click', () => selectCharacter(name));
     characterListEl.appendChild(li);
   });
@@ -197,7 +217,7 @@ async function reloadCharacterList(selectName) {
     await selectCharacter(selectName);
   } else if (!names.includes(currentCharacter)) {
     currentCharacter = null;
-    emptyState.style.display = 'block';
+    emptyState.style.display = 'flex';
     characterPanel.style.display = 'none';
   }
 }
@@ -212,7 +232,7 @@ async function selectCharacter(name) {
 
   currentCharacter = name;
   Array.from(characterListEl.children).forEach((li) => {
-    li.className = li.textContent === name ? 'selected' : '';
+    li.className = li.dataset.name === name ? 'selected' : '';
   });
   emptyState.style.display = 'none';
   characterPanel.style.display = 'block';
@@ -266,6 +286,7 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 async function loadCharacterDetail(name) {
+  hideBulkInput();
   const data = await apiJson(`/api/characters/${encodeURIComponent(name)}`);
   nameInput.value = data.name;
   personaInput.value = data.persona || '';
@@ -355,6 +376,18 @@ const bulkInputPanel = document.getElementById('bulk-input-panel');
 const bulkInputText = document.getElementById('bulk-input-text');
 const bulkInputApplyBtn = document.getElementById('bulk-input-apply-btn');
 const bulkInputCancelBtn = document.getElementById('bulk-input-cancel-btn');
+const individualFieldsBlock = document.getElementById('individual-fields-block');
+
+// 일괄 입력창이 열려 있는 동안에는 하나씩 입력하는 칸을 숨겨서, 같은 화면에 두 가지
+// 입력 방식이 동시에 보여 헷갈리는 일이 없게 한다.
+function showBulkInput() {
+  bulkInputPanel.style.display = 'block';
+  individualFieldsBlock.style.display = 'none';
+}
+function hideBulkInput() {
+  bulkInputPanel.style.display = 'none';
+  individualFieldsBlock.style.display = 'block';
+}
 
 const BULK_HEADER_PATTERN = /^\s*(페르소나|성격|외형|생김새|말투|어투)\s*[:：]?\s*(.*)$/;
 const BULK_HEADER_KEY_MAP = {
@@ -388,11 +421,11 @@ function parseBulkCharacterText(raw) {
 
 bulkInputToggleBtn.addEventListener('click', () => {
   const isHidden = bulkInputPanel.style.display === 'none';
-  bulkInputPanel.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) showBulkInput(); else hideBulkInput();
 });
 
 bulkInputCancelBtn.addEventListener('click', () => {
-  bulkInputPanel.style.display = 'none';
+  hideBulkInput();
 });
 
 bulkInputApplyBtn.addEventListener('click', () => {
@@ -415,7 +448,7 @@ bulkInputApplyBtn.addEventListener('click', () => {
   markCharacterFormDirty();
 
   bulkInputText.value = '';
-  bulkInputPanel.style.display = 'none';
+  hideBulkInput();
 });
 
 document.getElementById('save-character-btn').addEventListener('click', async () => {
