@@ -1,6 +1,7 @@
 // CharacterVoiceStudio 프론트엔드 로직 (프레임워크 없이 순수 JS)
 
 let currentCharacter = null;
+let appSettings = { language: 'ko', speed_factor: 1.0, preview_volume: 1.0, reset_browser_cache_on_next_launch: false };
 
 async function api(path, options = {}) {
   return fetch(path, {
@@ -13,19 +14,32 @@ async function apiJson(path, options = {}) {
   const res = await api(path, options);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || `요청 실패 (${res.status})`);
+    throw new Error(data.detail || `HTTP ${res.status}`);
   }
   if (res.status === 204) return null;
   return res.json();
 }
 
-// ---- 상단 큰 탭(캐릭터 작업 / 서버 상태 / 작업 로그) ----
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i++;
+  }
+  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+// ---- 상단 큰 탭(캐릭터 작업 / 서버 상태 / 작업 로그 / 설정) ----
 document.querySelectorAll('.top-tabs .tab-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.top-tabs .tab-btn').forEach((b) => b.classList.remove('active'));
     document.querySelectorAll('.toptab-panel').forEach((p) => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(`toptab-${btn.dataset.toptab}`).classList.add('active');
+    if (btn.dataset.toptab === 'settings') refreshCacheInfo();
   });
 });
 
@@ -47,13 +61,13 @@ async function pollEngineStatus() {
   try {
     const status = await apiJson('/api/engine/status');
     if (status.failed_message) {
-      engineBannerText.textContent = `엔진 오류: ${status.failed_message}`;
+      engineBannerText.textContent = t('engine.error', { message: status.failed_message });
       engineBanner.className = 'engine-banner error';
     } else if (!status.ready) {
-      engineBannerText.textContent = '엔진을 기동하는 중입니다. 첫 기동은 모델 로딩으로 다소 시간이 걸립니다...';
+      engineBannerText.textContent = t('engine.starting');
       engineBanner.className = 'engine-banner loading';
     } else {
-      engineBannerText.textContent = '엔진 준비 완료';
+      engineBannerText.textContent = t('engine.ready');
       engineBanner.className = 'engine-banner ready';
     }
 
@@ -109,8 +123,8 @@ function renderLogView() {
   });
 
   logCountEl.textContent = filterText
-    ? `검색 결과 ${visibleLines.length}줄 (화면에 ${allLogLines.length - logClearOffset}줄 중)`
-    : `${visibleLines.length}줄 표시 중 (엔진은 최근 500줄까지 보관)`;
+    ? t('log.countFiltered', { count: visibleLines.length, total: allLogLines.length - logClearOffset })
+    : t('log.countAll', { count: visibleLines.length });
 
   if (logAutoscrollCheckbox.checked) {
     engineLogView.scrollTop = engineLogView.scrollHeight;
@@ -128,10 +142,10 @@ logCopyBtn.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(allLogLines.slice(logClearOffset).join('\n'));
     const original = logCopyBtn.textContent;
-    logCopyBtn.textContent = '복사됨!';
+    logCopyBtn.textContent = t('log.copied');
     setTimeout(() => { logCopyBtn.textContent = original; }, 1500);
   } catch (err) {
-    alert('클립보드 복사에 실패했습니다: ' + err.message);
+    alert(t('log.copyFailed', { message: err.message }));
   }
 });
 
@@ -153,27 +167,28 @@ async function pollMonitorStatus() {
   try {
     const s = await apiJson('/api/monitor/status');
     let html = '';
-    html += '<h3>CPU / RAM</h3>';
-    html += bar(s.cpu_percent, `CPU (코어 ${s.cpu_count}개)`);
-    html += bar(s.ram_percent, `RAM (${s.ram_used_gb} / ${s.ram_total_gb} GB)`);
+    html += `<h3>${t('monitor.cpuRamHeading')}</h3>`;
+    html += bar(s.cpu_percent, t('monitor.cpuLabel', { count: s.cpu_count }));
+    html += bar(s.ram_percent, t('monitor.ramLabel', { used: s.ram_used_gb, total: s.ram_total_gb }));
 
+    html += `<h3>${t('monitor.gpuHeading')}</h3>`;
     if (s.gpu) {
-      html += '<h3>GPU</h3>';
       html += `<div class="dim">${s.gpu.name} · ${s.gpu.temperature_c}°C</div>`;
-      html += bar(s.gpu.utilization_percent, 'GPU 사용률');
-      html += bar(s.gpu.memory_used_percent, `VRAM (${s.gpu.memory_used_mb.toFixed(0)} / ${s.gpu.memory_total_mb.toFixed(0)} MB)`);
+      html += bar(s.gpu.utilization_percent, t('monitor.gpuUsage'));
+      html += bar(s.gpu.memory_used_percent, t('monitor.vram', { used: s.gpu.memory_used_mb.toFixed(0), total: s.gpu.memory_total_mb.toFixed(0) }));
     } else {
-      html += '<h3>GPU</h3><div class="dim">GPU 정보를 가져올 수 없습니다 (nvidia-smi 없음).</div>';
+      html += `<div class="dim">${t('monitor.gpuUnavailable')}</div>`;
     }
 
-    html += '<h3>디스크 남은 용량</h3>';
+    html += `<h3>${t('monitor.diskHeading')}</h3>`;
     s.disks.forEach((d) => {
-      html += bar(d.used_percent, `${d.label} (${d.drive}) · 남음 ${d.free_gb} GB / 전체 ${d.total_gb} GB`);
+      const label = t(d.label_key === 'system_drive' ? 'monitor.diskSystemDrive' : 'monitor.diskProjectDrive');
+      html += bar(d.used_percent, t('monitor.diskLabel', { label, drive: d.drive, free: d.free_gb, total: d.total_gb }));
     });
 
     monitorPanel.innerHTML = html;
   } catch (err) {
-    monitorPanel.innerHTML = `<div class="dim">서버 상태를 가져오지 못했습니다: ${err.message}</div>`;
+    monitorPanel.innerHTML = `<div class="dim">${t('monitor.loadFailed', { message: err.message })}</div>`;
   }
   setTimeout(pollMonitorStatus, 5000);
 }
@@ -224,9 +239,7 @@ async function reloadCharacterList(selectName) {
 
 async function selectCharacter(name) {
   if (name !== currentCharacter && isCharacterFormDirty) {
-    const proceed = confirm(
-      '저장하지 않은 캐릭터 정보(페르소나/외형/말투)가 있습니다.\n저장하지 않고 다른 캐릭터로 이동할까요?'
-    );
+    const proceed = confirm(t('character.switchConfirm'));
     if (!proceed) return;
   }
 
@@ -242,7 +255,7 @@ async function selectCharacter(name) {
 }
 
 document.getElementById('new-character-btn').addEventListener('click', async () => {
-  const name = prompt('캐릭터 이름:');
+  const name = prompt(t('character.namePrompt'));
   if (!name) return;
   try {
     await apiJson('/api/characters', { method: 'POST', body: JSON.stringify({ name }) });
@@ -254,7 +267,7 @@ document.getElementById('new-character-btn').addEventListener('click', async () 
 
 document.getElementById('delete-character-btn').addEventListener('click', async () => {
   if (!currentCharacter) return;
-  if (!confirm(`'${currentCharacter}' 캐릭터와 저장된 모든 음성·대사를 삭제합니다. 계속할까요?`)) return;
+  if (!confirm(t('character.deleteConfirm', { name: currentCharacter }))) return;
   await apiJson(`/api/characters/${encodeURIComponent(currentCharacter)}`, { method: 'DELETE' });
   currentCharacter = null;
   await reloadCharacterList();
@@ -304,6 +317,10 @@ async function refreshVoiceRefs(name) {
   renderVoiceRefs(name, data.voice_refs || []);
 }
 
+function applyPreviewVolume(audioEl) {
+  audioEl.volume = appSettings.preview_volume;
+}
+
 function renderVoiceRefs(name, refs) {
   voiceRefListEl.innerHTML = '';
   refs.forEach((ref) => {
@@ -318,20 +335,28 @@ function renderVoiceRefs(name, refs) {
     li.innerHTML = `
       <div class="voice-ref-head">
         <strong class="ref-filename"></strong>
-        <span class="badge ai-badge" style="display:none">🤖 AI 임시 생성</span>
+        <span class="badge ai-badge" style="display:none"></span>
         <audio controls></audio>
-        <button class="danger small remove-ref-btn">삭제</button>
+        <button class="danger small remove-ref-btn"></button>
       </div>
-      <textarea class="prompt-text-input" rows="2" placeholder="이 음성이 실제로 말한 문장(대본)"></textarea>
+      <textarea class="prompt-text-input" rows="2"></textarea>
       <div class="btn-row">
-        <button class="small auto-transcribe-btn">자동 대본 추출</button>
-        <button class="small save-prompt-btn">대본 저장</button>
+        <button class="small auto-transcribe-btn"></button>
+        <button class="small save-prompt-btn"></button>
       </div>
     `;
     li.querySelector('.ref-filename').textContent = filename;
-    li.querySelector('audio').src = audioUrl;
+    const audioEl = li.querySelector('audio');
+    audioEl.src = audioUrl;
+    applyPreviewVolume(audioEl);
+    li.querySelector('.remove-ref-btn').textContent = t('voiceRef.remove');
+    li.querySelector('.prompt-text-input').placeholder = t('voiceRef.promptPlaceholder');
+    li.querySelector('.auto-transcribe-btn').textContent = t('voiceRef.autoTranscribe');
+    li.querySelector('.save-prompt-btn').textContent = t('voiceRef.savePrompt');
     if (ref.source === 'ai_placeholder') {
-      li.querySelector('.ai-badge').style.display = 'inline-block';
+      const badge = li.querySelector('.ai-badge');
+      badge.textContent = t('voiceRef.aiBadge');
+      badge.style.display = 'inline-block';
     }
 
     const promptInput = li.querySelector('.prompt-text-input');
@@ -346,7 +371,7 @@ function renderVoiceRefs(name, refs) {
       const btn = e.target;
       btn.disabled = true;
       const previous = promptInput.value;
-      promptInput.value = '추출 중입니다... (엔진의 faster-whisper 사용)';
+      promptInput.value = t('voiceRef.autoTranscribing');
       try {
         const result = await apiJson(`/api/characters/${encodeURIComponent(name)}/voice_refs/transcribe`, {
           method: 'POST',
@@ -355,7 +380,7 @@ function renderVoiceRefs(name, refs) {
         promptInput.value = result.text;
       } catch (err) {
         promptInput.value = previous;
-        alert(`대본 자동 추출 실패: ${err.message}`);
+        alert(t('voiceRef.transcribeFailed', { message: err.message }));
       } finally {
         btn.disabled = false;
       }
@@ -367,7 +392,7 @@ function renderVoiceRefs(name, refs) {
         body: JSON.stringify({ wav: ref.wav, prompt_text: promptInput.value }),
       });
       ref.prompt_text = promptInput.value;
-      alert('대본이 저장되었습니다.');
+      alert(t('voiceRef.promptSaved'));
     });
 
     voiceRefListEl.appendChild(li);
@@ -393,14 +418,16 @@ function hideBulkInput() {
   individualFieldsBlock.style.display = 'block';
 }
 
-const BULK_HEADER_PATTERN = /^\s*(페르소나|성격|외형|생김새|말투|어투)\s*[:：]?\s*(.*)$/;
+// 화면 언어와 무관하게, 4개 언어 어떤 라벨로 붙여넣어도 나눠 인식하도록 한글/영어/일본어/
+// 중국어 표기를 전부 인식한다.
+const BULK_HEADER_PATTERN = /^\s*(페르소나|성격|외형|생김새|말투|어투|persona|personality|appearance|looks|speech style|speech|tone|ペルソナ|性格|外見|外観|口調|話し方|人设|人設|外观|外貌|语气|語氣|说话方式)\s*[:：]?\s*(.*)$/i;
 const BULK_HEADER_KEY_MAP = {
-  페르소나: 'persona',
-  성격: 'persona',
-  외형: 'appearance',
-  생김새: 'appearance',
-  말투: 'speech_style',
-  어투: 'speech_style',
+  '페르소나': 'persona', '성격': 'persona', 'persona': 'persona', 'personality': 'persona',
+  'ペルソナ': 'persona', '人设': 'persona', '人設': 'persona',
+  '외형': 'appearance', '생김새': 'appearance', 'appearance': 'appearance', 'looks': 'appearance',
+  '外見': 'appearance', '外観': 'appearance', '外观': 'appearance', '外貌': 'appearance',
+  '말투': 'speech_style', '어투': 'speech_style', 'speech style': 'speech_style', 'speech': 'speech_style', 'tone': 'speech_style',
+  '口調': 'speech_style', '話し方': 'speech_style', '语气': 'speech_style', '語氣': 'speech_style', '说话方式': 'speech_style',
 };
 
 function parseBulkCharacterText(raw) {
@@ -409,9 +436,9 @@ function parseBulkCharacterText(raw) {
   raw.split(/\r?\n/).forEach((line) => {
     const match = line.match(BULK_HEADER_PATTERN);
     if (match) {
-      currentKey = BULK_HEADER_KEY_MAP[match[1]];
+      currentKey = BULK_HEADER_KEY_MAP[match[1].toLowerCase()] || BULK_HEADER_KEY_MAP[match[1]];
       const inline = match[2].trim();
-      if (inline) sections[currentKey].push(inline);
+      if (currentKey && inline) sections[currentKey].push(inline);
       return;
     }
     if (currentKey) sections[currentKey].push(line);
@@ -437,12 +464,12 @@ bulkInputApplyBtn.addEventListener('click', () => {
   const parsed = parseBulkCharacterText(raw);
 
   if (!parsed.persona && !parsed.appearance && !parsed.speech_style) {
-    alert('내용을 나눌 수 없습니다. "페르소나:", "외형:", "말투:"로 시작하는 줄을 넣어주세요.');
+    alert(t('bulkInput.noSections'));
     return;
   }
 
   const hasExisting = personaInput.value.trim() || appearanceInput.value.trim() || speechStyleInput.value.trim();
-  if (hasExisting && !confirm('기존에 입력된 페르소나/외형/말투 내용을 덮어씁니다. 계속할까요?')) {
+  if (hasExisting && !confirm(t('bulkInput.confirmOverwrite'))) {
     return;
   }
 
@@ -467,7 +494,7 @@ document.getElementById('save-character-btn').addEventListener('click', async ()
       }),
     });
     isCharacterFormDirty = false;
-    saveCharacterStatus.textContent = '저장됨';
+    saveCharacterStatus.textContent = t('save.saved');
     setTimeout(() => { saveCharacterStatus.textContent = ''; }, 2000);
   } catch (err) {
     alert(err.message);
@@ -491,7 +518,7 @@ document.getElementById('add-ref-form').addEventListener('submit', async (e) => 
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    alert(data.detail || '업로드 실패');
+    alert(data.detail || t('voiceRef.uploadFailed'));
     return;
   }
   fileInput.value = '';
@@ -502,16 +529,12 @@ document.getElementById('generate-ref-btn').addEventListener('click', async (e) 
   if (!currentCharacter) return;
   const btn = e.currentTarget;
 
-  const proceed = confirm(
-    'Windows에 내장된 한국어 음성(현재는 여성 음성만 지원)으로 페르소나 성격을 어느 정도 반영한 ' +
-    '임시 목소리를 만듭니다.\n\n실제 목소리가 아니라 시작점일 뿐이니, 나중에 진짜 음성 샘플로 ' +
-    '교체하는 걸 추천합니다.\n\n계속할까요?'
-  );
+  const proceed = confirm(t('voiceRef.generateConfirm'));
   if (!proceed) return;
 
   btn.disabled = true;
   const original = btn.textContent;
-  btn.textContent = '생성 중입니다...';
+  btn.textContent = t('voiceRef.generating');
   try {
     await apiJson(`/api/characters/${encodeURIComponent(currentCharacter)}/voice_refs/generate`, {
       method: 'POST',
@@ -519,7 +542,7 @@ document.getElementById('generate-ref-btn').addEventListener('click', async (e) 
     });
     await refreshVoiceRefs(currentCharacter);
   } catch (err) {
-    alert(`임시 목소리 생성 실패: ${err.message}`);
+    alert(t('voiceRef.generateFailed', { message: err.message }));
   } finally {
     btn.disabled = false;
     btn.textContent = original;
@@ -547,10 +570,10 @@ function resetStudio() {
 synthBtn.addEventListener('click', async () => {
   if (!currentCharacter) return;
   const text = dialogueTextEl.value.trim();
-  if (!text) { alert('대사를 입력하세요.'); return; }
+  if (!text) { alert(t('dialogue.emptyAlert')); return; }
 
   synthBtn.disabled = true;
-  synthStatus.textContent = '합성 중입니다... (GPU 추론)';
+  synthStatus.textContent = t('dialogue.synthesizing');
   try {
     const res = await api(`/api/characters/${encodeURIComponent(currentCharacter)}/synthesize`, {
       method: 'POST',
@@ -558,15 +581,16 @@ synthBtn.addEventListener('click', async () => {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || `합성 실패 (${res.status})`);
+      throw new Error(data.detail || t('dialogue.synthesizeFailed', { status: res.status }));
     }
     lastSynthBlob = await res.blob();
     synthPlayer.src = URL.createObjectURL(lastSynthBlob);
+    applyPreviewVolume(synthPlayer);
     synthPlayer.style.display = 'block';
     saveDialogueBtn.disabled = false;
-    synthStatus.textContent = '합성 완료. 미리듣기 후 저장하세요.';
+    synthStatus.textContent = t('dialogue.synthesizeDone');
   } catch (err) {
-    synthStatus.textContent = '합성 실패';
+    synthStatus.textContent = t('dialogue.synthesizeFailedLabel');
     alert(err.message);
   } finally {
     synthBtn.disabled = false;
@@ -585,10 +609,10 @@ saveDialogueBtn.addEventListener('click', async () => {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    alert(data.detail || '저장 실패');
+    alert(data.detail || t('dialogue.saveFailed'));
     return;
   }
-  synthStatus.textContent = '저장되었습니다.';
+  synthStatus.textContent = t('dialogue.saved');
   await loadDialogueList(currentCharacter);
 });
 
@@ -603,6 +627,7 @@ async function loadDialogueList(name) {
     const audioEl = document.createElement('audio');
     audioEl.controls = true;
     audioEl.src = audioUrl;
+    applyPreviewVolume(audioEl);
     const timeSpan = document.createElement('span');
     timeSpan.className = 'dim';
     timeSpan.textContent = row.created_at;
@@ -614,7 +639,115 @@ async function loadDialogueList(name) {
   });
 }
 
+// ---- 설정 페이지 ----
+const langPicker = document.getElementById('lang-picker');
+const speedFactorSlider = document.getElementById('speed-factor-slider');
+const speedFactorValue = document.getElementById('speed-factor-value');
+const previewVolumeSlider = document.getElementById('preview-volume-slider');
+const previewVolumeValue = document.getElementById('preview-volume-value');
+const tempCacheInfoEl = document.getElementById('temp-cache-info');
+const browserCacheInfoEl = document.getElementById('browser-cache-info');
+const clearTempCacheBtn = document.getElementById('clear-temp-cache-btn');
+const resetBrowserCacheBtn = document.getElementById('reset-browser-cache-btn');
+
+function highlightLangButtons() {
+  langPicker.querySelectorAll('.lang-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.lang === appSettings.language);
+  });
+}
+
+function refreshResetCacheBtnLabel() {
+  resetBrowserCacheBtn.textContent = appSettings.reset_browser_cache_on_next_launch
+    ? t('settings.resetBrowserCacheCancel')
+    : t('settings.resetBrowserCacheBtn');
+}
+
+async function saveSettings(updates) {
+  try {
+    appSettings = await apiJson('/api/settings', { method: 'PUT', body: JSON.stringify(updates) });
+  } catch (err) {
+    alert(t('settings.saveFailed', { message: err.message }));
+  }
+}
+
+langPicker.querySelectorAll('.lang-btn').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const lang = btn.dataset.lang;
+    setLanguage(lang);
+    highlightLangButtons();
+    refreshResetCacheBtnLabel();
+    renderLogView();
+    await saveSettings({ language: lang });
+  });
+});
+
+let speedSaveTimer = null;
+speedFactorSlider.addEventListener('input', () => {
+  const value = parseFloat(speedFactorSlider.value);
+  speedFactorValue.textContent = `${value.toFixed(2)}x`;
+  appSettings.speed_factor = value;
+  clearTimeout(speedSaveTimer);
+  speedSaveTimer = setTimeout(() => saveSettings({ speed_factor: value }), 400);
+});
+
+let volumeSaveTimer = null;
+previewVolumeSlider.addEventListener('input', () => {
+  const value = parseFloat(previewVolumeSlider.value);
+  previewVolumeValue.textContent = `${Math.round(value * 100)}%`;
+  appSettings.preview_volume = value;
+  applyPreviewVolume(synthPlayer);
+  clearTimeout(volumeSaveTimer);
+  volumeSaveTimer = setTimeout(() => saveSettings({ preview_volume: value }), 400);
+});
+
+async function refreshCacheInfo() {
+  try {
+    const info = await apiJson('/api/settings/cache_info');
+    tempCacheInfoEl.textContent = t('settings.tempCacheInfo', { size: formatBytes(info.temp_uploads_bytes) });
+    browserCacheInfoEl.textContent = t('settings.browserCacheInfo', { size: formatBytes(info.browser_cache_bytes) });
+  } catch (err) {
+    // 조용히 무시(설정 탭을 보지 않을 때도 있으니 알림은 띄우지 않음)
+  }
+}
+
+clearTempCacheBtn.addEventListener('click', async () => {
+  clearTempCacheBtn.disabled = true;
+  try {
+    const result = await apiJson('/api/settings/clear_temp_cache', { method: 'POST' });
+    alert(t('settings.tempCacheCleared', { size: formatBytes(result.freed_bytes) }));
+    await refreshCacheInfo();
+  } finally {
+    clearTempCacheBtn.disabled = false;
+  }
+});
+
+resetBrowserCacheBtn.addEventListener('click', async () => {
+  const next = !appSettings.reset_browser_cache_on_next_launch;
+  await saveSettings({ reset_browser_cache_on_next_launch: next });
+  refreshResetCacheBtnLabel();
+  alert(next ? t('settings.resetBrowserCacheScheduled') : t('settings.resetBrowserCacheCancelled'));
+});
+
+async function initSettings() {
+  try {
+    appSettings = await apiJson('/api/settings');
+  } catch (err) {
+    console.error(t('settings.loadFailed', { message: err.message }));
+  }
+  setLanguage(appSettings.language || 'ko');
+  highlightLangButtons();
+  speedFactorSlider.value = appSettings.speed_factor;
+  speedFactorValue.textContent = `${appSettings.speed_factor.toFixed(2)}x`;
+  previewVolumeSlider.value = appSettings.preview_volume;
+  previewVolumeValue.textContent = `${Math.round(appSettings.preview_volume * 100)}%`;
+  refreshResetCacheBtnLabel();
+}
+
 // ---- 시작 ----
-reloadCharacterList();
-pollEngineStatus();
-pollMonitorStatus();
+async function init() {
+  await initSettings();
+  reloadCharacterList();
+  pollEngineStatus();
+  pollMonitorStatus();
+}
+init();

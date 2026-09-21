@@ -358,6 +358,31 @@ h3 {
 .log-line.log-warn { color: var(--warn); }
 .log-line.log-section { color: var(--accent-2); font-weight: 600; }
 
+/* 설정 페이지 */
+.settings-card { max-width: 560px; margin-bottom: 16px; }
+
+.lang-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.lang-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  box-shadow: none;
+}
+.lang-btn:hover { background: var(--panel-3); color: var(--text); filter: none; box-shadow: none; }
+.lang-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white;
+  border-color: transparent;
+}
+
+.slider-row { display: flex; align-items: center; gap: 12px; margin: 6px 0 4px; }
+.slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+}
+.slider-row span { width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+
 @media (max-width: 720px) {
   .layout { flex-direction: column; height: auto; }
   .sidebar { width: 100%; }

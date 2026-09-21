@@ -9,13 +9,13 @@ from typing import Optional
 import psutil
 
 
-def _disk_stats(label: str, path: Path) -> Optional[dict]:
+def _disk_stats(label_key: str, path: Path) -> Optional[dict]:
     try:
         total, used, free = shutil.disk_usage(str(path))
     except OSError:
         return None
     return {
-        "label": label,
+        "label_key": label_key,
         "drive": str(Path(path).resolve().anchor),
         "total_gb": round(total / 1e9, 1),
         "used_gb": round(used / 1e9, 1),
@@ -65,11 +65,11 @@ def collect_status(project_root: Path) -> dict:
 
     disks = []
     seen_drives = set()
-    for label, path in [
-        ("이 프로그램이 있는 드라이브", project_root),
-        ("시스템(C:) 드라이브", Path("C:/")),
+    for label_key, path in [
+        ("project_drive", project_root),
+        ("system_drive", Path("C:/")),
     ]:
-        stat = _disk_stats(label, path)
+        stat = _disk_stats(label_key, path)
         if stat and stat["drive"] not in seen_drives:
             seen_drives.add(stat["drive"])
             disks.append(stat)

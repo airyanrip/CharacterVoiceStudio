@@ -38,6 +38,7 @@ class TTSClient:
         aux_ref_audio_paths: list[str] | None = None,
         text_lang: str = "ko",
         prompt_lang: str = "ko",
+        speed_factor: float = 1.0,
         timeout: float = 180.0,
     ) -> bytes:
         text = sanitize_text_for_tts(text)
@@ -52,6 +53,7 @@ class TTSClient:
             "aux_ref_audio_paths": aux_ref_audio_paths or [],
             "prompt_text": prompt_text,
             "prompt_lang": prompt_lang,
+            "speed_factor": speed_factor,
             "media_type": "wav",
             "streaming_mode": False,
         }

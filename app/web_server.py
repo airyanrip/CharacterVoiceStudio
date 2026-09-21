@@ -9,11 +9,13 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import cache_utils
 from asr_client import ASRClient, ASRError
 from character_store import CharacterStore
 from engine_manager import EngineManager
 import monitor as monitor_module
 from paths import bundled_resource, project_root
+from settings_store import SettingsStore
 from tts_client import TTSClient, TTSError
 from voice_generator import VoiceGenerationError, generate_placeholder_voice
 
@@ -27,6 +29,7 @@ store = CharacterStore(CHARACTERS_DIR)
 engine = EngineManager(ENGINE_DIR)
 tts_client = TTSClient(engine.base_url)
 asr_client = ASRClient(ENGINE_DIR)
+settings_store = SettingsStore(DATA_DIR / "settings.json")
 
 app = FastAPI(title="CharacterVoiceStudio")
 
@@ -67,6 +70,40 @@ def api_engine_status() -> dict:
 @app.get("/api/monitor/status")
 def api_monitor_status() -> dict:
     return monitor_module.collect_status(PROJECT_ROOT)
+
+
+# ---------------- 설정 ----------------
+
+class UpdateSettingsPayload(BaseModel):
+    language: str | None = None
+    speed_factor: float | None = None
+    preview_volume: float | None = None
+    reset_browser_cache_on_next_launch: bool | None = None
+
+
+@app.get("/api/settings")
+def api_get_settings() -> dict:
+    return settings_store.load()
+
+
+@app.put("/api/settings")
+def api_update_settings(payload: UpdateSettingsPayload):
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    try:
+        return settings_store.save(updates)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/settings/cache_info")
+def api_cache_info() -> dict:
+    return cache_utils.cache_info(DATA_DIR)
+
+
+@app.post("/api/settings/clear_temp_cache")
+def api_clear_temp_cache() -> dict:
+    freed = cache_utils.clear_temp_uploads(DATA_DIR)
+    return {"freed_bytes": freed}
 
 
 # ---------------- 캐릭터 ----------------
@@ -252,6 +289,8 @@ def api_synthesize(name: str, payload: SynthesizePayload):
     if not engine.ready:
         raise HTTPException(status_code=503, detail="엔진이 아직 준비되지 않았습니다.")
 
+    speed_factor = settings_store.load().get("speed_factor", 1.0)
+
     try:
         wav_bytes = tts_client.synthesize(
             text=text,
@@ -260,6 +299,7 @@ def api_synthesize(name: str, payload: SynthesizePayload):
             aux_ref_audio_paths=aux_paths,
             text_lang=main_ref.get("lang", "ko"),
             prompt_lang=main_ref.get("lang", "ko"),
+            speed_factor=speed_factor,
         )
     except TTSError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

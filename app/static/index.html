@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
-  <div id="engine-banner" class="engine-banner loading"><span class="engine-banner-dot"></span><span id="engine-banner-text">엔진 상태 확인 중...</span></div>
+  <div id="engine-banner" class="engine-banner loading"><span class="engine-banner-dot"></span><span id="engine-banner-text" data-i18n="engine.checking">엔진 상태 확인 중...</span></div>
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">
@@ -15,69 +15,68 @@
         <span class="brand-name">CharacterVoiceStudio</span>
       </div>
       <div class="sidebar-header">
-        <h2>캐릭터</h2>
+        <h2 data-i18n="sidebar.characters">캐릭터</h2>
       </div>
       <ul id="character-list" class="character-list"></ul>
       <div class="sidebar-actions">
-        <button id="new-character-btn">+ 새 캐릭터</button>
-        <button id="delete-character-btn" class="danger">삭제</button>
+        <button id="new-character-btn" data-i18n="sidebar.newCharacter">+ 새 캐릭터</button>
+        <button id="delete-character-btn" class="danger" data-i18n="sidebar.delete">삭제</button>
       </div>
     </aside>
     <main class="main">
       <div class="tabs top-tabs">
-        <button class="tab-btn active" data-toptab="character"><span class="tab-icon">🎭</span>캐릭터 작업</button>
-        <button class="tab-btn" data-toptab="monitor"><span class="tab-icon">📊</span>서버 상태</button>
-        <button class="tab-btn" data-toptab="log"><span class="tab-icon">📜</span>작업 로그</button>
+        <button class="tab-btn active" data-toptab="character"><span class="tab-icon">🎭</span><span data-i18n="tabs.character">캐릭터 작업</span></button>
+        <button class="tab-btn" data-toptab="monitor"><span class="tab-icon">📊</span><span data-i18n="tabs.monitor">서버 상태</span></button>
+        <button class="tab-btn" data-toptab="log"><span class="tab-icon">📜</span><span data-i18n="tabs.log">작업 로그</span></button>
+        <button class="tab-btn" data-toptab="settings"><span class="tab-icon">⚙️</span><span data-i18n="tabs.settings">설정</span></button>
       </div>
 
       <section id="toptab-character" class="toptab-panel active">
         <div id="empty-state" class="empty-state">
           <div class="empty-state-icon">🎭</div>
-          <div>왼쪽에서 캐릭터를 선택하거나 새로 만드세요.</div>
+          <div data-i18n="emptyState.text">왼쪽에서 캐릭터를 선택하거나 새로 만드세요.</div>
         </div>
         <div id="character-panel" class="character-panel" style="display:none">
           <div class="tabs">
-            <button class="tab-btn active" data-tab="settings">캐릭터 설정</button>
-            <button class="tab-btn" data-tab="studio">대사 작업실</button>
+            <button class="tab-btn active" data-tab="settings" data-i18n="characterTabs.settings">캐릭터 설정</button>
+            <button class="tab-btn" data-tab="studio" data-i18n="characterTabs.studio">대사 작업실</button>
           </div>
 
           <section id="tab-settings" class="tab-panel active">
             <div class="two-col">
               <div class="col card">
-                <label>이름</label>
+                <label data-i18n="field.name">이름</label>
                 <input id="char-name" type="text" readonly>
 
-                <button type="button" id="bulk-input-toggle-btn" class="small secondary">✏️ 페르소나·외형·말투 한 번에 입력하기</button>
+                <button type="button" id="bulk-input-toggle-btn" class="small secondary" data-i18n="bulkInput.toggle">✏️ 페르소나·외형·말투 한 번에 입력하기</button>
                 <div id="bulk-input-panel" class="bulk-input-panel" style="display:none">
-                  <label>아래처럼 줄 앞에 이름을 붙여서 한 번에 붙여넣으세요</label>
-                  <textarea id="bulk-input-text" rows="8" placeholder="페르소나: 씩씩하고 장난기 많은 성격.
-외형: 은발에 붉은 눈, 작은 체구.
-말투: 문장 끝에 ~다냥을 붙임."></textarea>
+                  <label data-i18n="bulkInput.instructions">아래처럼 줄 앞에 이름을 붙여서 한 번에 붙여넣으세요</label>
+                  <textarea id="bulk-input-text" rows="8" data-i18n-placeholder="bulkInput.placeholder"></textarea>
                   <div class="btn-row">
-                    <button type="button" id="bulk-input-apply-btn" class="small">나눠서 채우기</button>
-                    <button type="button" id="bulk-input-cancel-btn" class="small secondary">닫기</button>
+                    <button type="button" id="bulk-input-apply-btn" class="small" data-i18n="bulkInput.apply">나눠서 채우기</button>
+                    <button type="button" id="bulk-input-cancel-btn" class="small secondary" data-i18n="bulkInput.cancel">닫기</button>
                   </div>
                 </div>
 
                 <div id="individual-fields-block">
-                  <label>페르소나(성격)</label>
+                  <label data-i18n="field.persona">페르소나(성격)</label>
                   <textarea id="char-persona" rows="4"></textarea>
-                  <label>외형</label>
+                  <label data-i18n="field.appearance">외형</label>
                   <textarea id="char-appearance" rows="4"></textarea>
-                  <label>말투</label>
+                  <label data-i18n="field.speechStyle">말투</label>
                   <textarea id="char-speech-style" rows="4"></textarea>
                 </div>
-                <button id="save-character-btn">💾 캐릭터 정보 저장</button>
+                <button id="save-character-btn" data-i18n="save.characterInfo">💾 캐릭터 정보 저장</button>
                 <span id="save-character-status" class="dim"></span>
               </div>
               <div class="col card">
-                <label>목소리 레퍼런스 (3~10초 짧은 wav + 정확한 대본)</label>
+                <label data-i18n="field.voiceRefsLabel">목소리 레퍼런스 (3~10초 짧은 wav + 정확한 대본)</label>
                 <ul id="voice-ref-list" class="voice-ref-list"></ul>
                 <form id="add-ref-form" class="add-ref-form">
                   <input type="file" id="ref-file" accept="audio/wav,.wav" required>
-                  <button type="submit">레퍼런스 추가</button>
+                  <button type="submit" data-i18n="voiceRef.addSubmit">레퍼런스 추가</button>
                 </form>
-                <button type="button" id="generate-ref-btn" class="small secondary" style="margin-top:8px">
+                <button type="button" id="generate-ref-btn" class="small secondary" style="margin-top:8px" data-i18n="voiceRef.generateButton">
                   🤖 목소리 샘플이 없다면 — 페르소나로 임시 목소리 만들기
                 </button>
               </div>
@@ -86,17 +85,17 @@
 
           <section id="tab-studio" class="tab-panel">
             <div class="card">
-              <label>대사</label>
-              <textarea id="dialogue-text" rows="4" placeholder="합성할 대사를 입력하세요."></textarea>
+              <label data-i18n="dialogue.label">대사</label>
+              <textarea id="dialogue-text" rows="4" data-i18n-placeholder="dialogue.placeholder"></textarea>
               <div class="btn-row">
-                <button id="synth-btn">🔊 합성</button>
-                <button id="save-dialogue-btn" disabled>💾 저장</button>
+                <button id="synth-btn" data-i18n="dialogue.synthesize">🔊 합성</button>
+                <button id="save-dialogue-btn" disabled data-i18n="dialogue.save">💾 저장</button>
               </div>
               <div id="synth-status" class="dim"></div>
               <audio id="synth-player" controls style="display:none"></audio>
             </div>
 
-            <h3>저장된 대사</h3>
+            <h3 data-i18n="dialogue.savedListHeading">저장된 대사</h3>
             <ul id="dialogue-list" class="dialogue-list"></ul>
           </section>
         </div>
@@ -108,17 +107,59 @@
 
       <section id="toptab-log" class="toptab-panel">
         <div class="log-toolbar">
-          <input type="text" id="log-filter" placeholder="🔍 로그 안에서 검색...">
-          <label class="log-toggle"><input type="checkbox" id="log-autoscroll" checked> 자동 스크롤</label>
-          <button id="log-clear-btn" class="small secondary">화면 지우기</button>
-          <button id="log-copy-btn" class="small secondary">전체 복사</button>
+          <input type="text" id="log-filter" data-i18n-placeholder="log.searchPlaceholder">
+          <label class="log-toggle"><input type="checkbox" id="log-autoscroll" checked> <span data-i18n="log.autoscroll">자동 스크롤</span></label>
+          <button id="log-clear-btn" class="small secondary" data-i18n="log.clear">화면 지우기</button>
+          <button id="log-copy-btn" class="small secondary" data-i18n="log.copy">전체 복사</button>
         </div>
-        <p class="dim">음성 엔진(GPT-SoVITS) 콘솔의 실제 출력입니다. 오류로 보이는 줄은 빨간색, 경고는 노란색으로 표시됩니다.</p>
+        <p class="dim" data-i18n="log.description">음성 엔진(GPT-SoVITS) 콘솔의 실제 출력입니다. 오류로 보이는 줄은 빨간색, 경고는 노란색으로 표시됩니다.</p>
         <div id="engine-log-view" class="engine-log-view"></div>
         <div id="log-count" class="dim log-count"></div>
       </section>
+
+      <section id="toptab-settings" class="toptab-panel">
+        <h3 data-i18n="settings.title" style="margin-top:0">⚙️ 설정</h3>
+
+        <div class="card settings-card">
+          <h3 data-i18n="settings.languageHeading" style="margin-top:0">🌐 언어</h3>
+          <p class="dim" data-i18n="settings.languageNote">화면에 쓰이는 언어를 바꿉니다.</p>
+          <div class="lang-picker" id="lang-picker">
+            <button type="button" class="lang-btn" data-lang="ko">한국어</button>
+            <button type="button" class="lang-btn" data-lang="en">English</button>
+            <button type="button" class="lang-btn" data-lang="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang="zh">中文</button>
+          </div>
+        </div>
+
+        <div class="card settings-card">
+          <h3 data-i18n="settings.soundHeading" style="margin-top:0">🔊 소리</h3>
+          <label data-i18n="settings.speedFactor">합성 속도</label>
+          <div class="slider-row">
+            <input type="range" id="speed-factor-slider" min="0.5" max="2.0" step="0.05" value="1.0">
+            <span id="speed-factor-value" class="dim">1.00x</span>
+          </div>
+          <p class="dim" data-i18n="settings.speedFactorHint">값이 클수록 대사가 빨라집니다 (0.5~2.0배).</p>
+
+          <label data-i18n="settings.previewVolume" style="margin-top:16px">미리듣기 볼륨</label>
+          <div class="slider-row">
+            <input type="range" id="preview-volume-slider" min="0" max="1.0" step="0.05" value="1.0">
+            <span id="preview-volume-value" class="dim">100%</span>
+          </div>
+        </div>
+
+        <div class="card settings-card">
+          <h3 data-i18n="settings.cacheHeading" style="margin-top:0">🧹 저장공간 정리</h3>
+          <p class="dim" id="temp-cache-info" data-i18n="settings.tempCacheInfo">임시 업로드 파일: -</p>
+          <button type="button" id="clear-temp-cache-btn" class="small secondary" data-i18n="settings.clearTempCache">지금 정리하기</button>
+
+          <p class="dim" id="browser-cache-info" style="margin-top:16px" data-i18n="settings.browserCacheInfo">프로그램 창(브라우저) 캐시: -</p>
+          <p class="dim" data-i18n="settings.resetBrowserCacheHint">프로그램이 실행 중일 때는 지울 수 없어서, 다음에 프로그램을 새로 켤 때 자동으로 지워지도록 예약합니다.</p>
+          <button type="button" id="reset-browser-cache-btn" class="small secondary" data-i18n="settings.resetBrowserCacheBtn">다음 실행 시 초기화 예약</button>
+        </div>
+      </section>
     </main>
   </div>
+  <script src="/assets/i18n.js"></script>
   <script src="/assets/app.js"></script>
 </body>
 </html>

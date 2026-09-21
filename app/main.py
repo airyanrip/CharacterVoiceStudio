@@ -13,7 +13,9 @@ from pathlib import Path
 
 import uvicorn
 
+import cache_utils
 from paths import project_root
+from settings_store import SettingsStore
 from web_server import app
 
 HOST = "127.0.0.1"
@@ -46,12 +48,25 @@ def _find_edge_path() -> str | None:
     return None
 
 
+def _apply_pending_cache_reset(data_dir: Path) -> None:
+    """설정 페이지에서 '다음 실행 시 캐시 초기화'를 눌렀다면, 아직 브라우저가
+    프로필 폴더를 열기 전인 지금 지운다(실행 중에는 파일이 잠겨서 못 지운다)."""
+    settings = SettingsStore(data_dir / "settings.json")
+    current = settings.load()
+    if current.get("reset_browser_cache_on_next_launch"):
+        cache_utils.reset_browser_cache_now(data_dir)
+        settings.save({"reset_browser_cache_on_next_launch": False})
+
+
 def _open_app_window(url: str) -> None:
     """가능하면 Edge '앱 모드'로 열어 주소창·탭 없는 프로그램 창처럼 보이게 하고,
     Edge를 찾을 수 없으면 일반 브라우저 탭으로라도 연다."""
+    data_dir = project_root() / "data"
+    _apply_pending_cache_reset(data_dir)
+
     edge_path = _find_edge_path()
     if edge_path:
-        profile_dir = project_root() / "data" / "app_window_profile"
+        profile_dir = data_dir / "app_window_profile"
         profile_dir.mkdir(parents=True, exist_ok=True)
         subprocess.Popen([
             edge_path,
